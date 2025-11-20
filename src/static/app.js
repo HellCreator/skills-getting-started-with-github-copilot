@@ -71,6 +71,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
             li.appendChild(avatar);
             li.appendChild(label);
+            // delete button
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "delete-btn";
+            delBtn.setAttribute("aria-label", `Remove ${email}`);
+            delBtn.textContent = "✖";
+
+            // When delete clicked: visually mark deleting, remove bullets, call API, then reload
+            delBtn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+
+              // visually hide bullets for the list and mark item as deleting
+              ul.classList.add("no-bullets");
+              li.classList.add("deleting");
+
+              try {
+                const resp = await fetch(
+                  `/activities/${encodeURIComponent(name)}/participant?email=${encodeURIComponent(email)}`,
+                  { method: "DELETE" }
+                );
+
+                if (resp.ok) {
+                  // reload to refresh activities/participants
+                  window.location.reload();
+                } else {
+                  const err = await resp.json().catch(() => ({}));
+                  messageDiv.textContent = err.detail || err.message || "Failed to remove participant";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                  // remove visual deleting state
+                  li.classList.remove("deleting");
+                  ul.classList.remove("no-bullets");
+                }
+              } catch (error) {
+                console.error("Error removing participant:", error);
+                messageDiv.textContent = "Failed to remove participant. Try again.";
+                messageDiv.className = "error";
+                messageDiv.classList.remove("hidden");
+                li.classList.remove("deleting");
+                ul.classList.remove("no-bullets");
+              }
+            });
+
+            li.appendChild(delBtn);
             ul.appendChild(li);
           });
         } else {
@@ -130,6 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities so participant lists and availability update
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
